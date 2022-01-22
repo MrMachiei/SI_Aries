@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/Rules/Aries/Aries.iml" filepath="$PROJECT_DIR$/Rules/Aries/Aries.iml" />
+      <module fileurl="file://$PROJECT_DIR$/BoardGame/BoardGame.iml" filepath="$PROJECT_DIR$/BoardGame/BoardGame.iml" />
+      <module fileurl="file://$PROJECT_DIR$/BoardGameEngine/BoardGameEngine.iml" filepath="$PROJECT_DIR$/BoardGameEngine/BoardGameEngine.iml" />
+      <module fileurl="file://$PROJECT_DIR$/CLI/CLI.iml" filepath="$PROJECT_DIR$/CLI/CLI.iml" />
+      <module fileurl="file://$PROJECT_DIR$/GUI/GUI.iml" filepath="$PROJECT_DIR$/GUI/GUI.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Games.iml" filepath="$PROJECT_DIR$/Games.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Players/NaivePlayer/NaivePlayer.iml" filepath="$PROJECT_DIR$/Players/NaivePlayer/NaivePlayer.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Players/NastyPlayer/NastyPlayer.iml" filepath="$PROJECT_DIR$/Players/NastyPlayer/NastyPlayer.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Players/NullPlayer/NullPlayer.iml" filepath="$PROJECT_DIR$/Players/NullPlayer/NullPlayer.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Players/Players.iml" filepath="$PROJECT_DIR$/Players/Players.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Rules/Rules.iml" filepath="$PROJECT_DIR$/Rules/Rules.iml" />
+      <module fileurl="file://$PROJECT_DIR$/RulesProvider/RulesProvider.iml" filepath="$PROJECT_DIR$/RulesProvider/RulesProvider.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Tester/Tester.iml" filepath="$PROJECT_DIR$/Tester/Tester.iml" />
+    </modules>
+  </component>
+</project>
