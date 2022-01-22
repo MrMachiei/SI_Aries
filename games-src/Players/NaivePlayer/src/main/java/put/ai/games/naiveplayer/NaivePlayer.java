@@ -35,11 +35,12 @@ public class NaivePlayer extends Player {
         for(Move m: moves){
             //dodac ograniczenie czasowe
             actTime = System.nanoTime();
-            if((actTime - startTime)*1000000 <= 100) break;
+            Long diff = time*1000000 - (actTime - startTime);
+            if(diff <= time*100000) return best;
             Board boardAfterMove = board.clone();
             boardAfterMove.doMove(m);
 
-            Long heur = alphaBeta(boardAfterMove, 3, Long.MIN_VALUE, Long.MAX_VALUE, color);
+            Long heur = alphaBeta(boardAfterMove, 3, Long.MIN_VALUE, Long.MAX_VALUE, color, diff);
 
             if(mini > heur){
                 best = m;
@@ -49,9 +50,9 @@ public class NaivePlayer extends Player {
         return best;
     }
 
-    private Long alphaBeta(Board board, int depth, Long alpha, Long beta, Color color){
-        if( depth == 0 ) return heuristicEvaluation(color, board);
-
+    private Long alphaBeta(Board board, int depth, Long alpha, Long beta, Color color, Long time){
+        if( depth == 0 || time <= 50*1000000) return heuristicEvaluation(color, board);
+        Long timeR = time*1000000 - System.nanoTime();
         Color enemyColor = Color.PLAYER1;
         if(color.equals(Color.PLAYER1)) enemyColor = Color.PLAYER2;
         List<Move> moves = makeListOfMoves(board, enemyColor);
@@ -60,7 +61,7 @@ public class NaivePlayer extends Player {
             //OGRANICZENIE CZASOWE
             Board boardAfterMove = board.clone();
             boardAfterMove.doMove(move);
-            Long eval = alphaBeta(board, depth - 1, -beta, -alpha, enemyColor);
+            Long eval = alphaBeta(board, depth - 1, -beta, -alpha, enemyColor, timeR);
             alpha = Math.max(alpha, eval);
             if(alpha >= beta) return beta;
         }
@@ -165,26 +166,28 @@ public class NaivePlayer extends Player {
     }
 
     private Field getStart(Color color, int size) {
-        if (color == Color.PLAYER1) return new Field(0,0);
-        return new Field(size-1,size-1);
+        if (color == Color.PLAYER1) return new Field(0, 0);
+        return new Field(size - 1, size - 1);
     }
 
     private Field getTarget(Color color, int size) {
-        if (color == Color.PLAYER2) return new Field(0,0);
-        return new Field(size-1,size-1);
+        if (color == Color.PLAYER2) return new Field(0, 0);
+        return new Field(size - 1, size - 1);
+    }
+
+    private static class Field {
+        private final int x;
+        private final int y;
+
+        public Field(int x, int y) {
+            this.x = x;
+            this.y = y;
+        }
+
+        public int getX() {return x;}
+
+        public int getY() {return y;}
     }
 }
 
-class Field {
-    private int x;
-    private int y;
 
-    public Field(int x, int y) {
-        this.x = x;
-        this.y = y;
-    }
-
-    public int getX() {return x;}
-
-    public int getY() {return y;}
-}
