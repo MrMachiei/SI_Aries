@@ -36,11 +36,11 @@ public class NaivePlayer extends Player {
             //dodac ograniczenie czasowe
             actTime = System.nanoTime();
             Long diff = time*1000000 - (actTime - startTime);
-            if(diff <= time*100000) return best;
+            if(diff <= time*10000) return best;
             Board boardAfterMove = board.clone();
             boardAfterMove.doMove(m);
 
-            Long heur = alphaBeta(boardAfterMove, 3, Long.MIN_VALUE, Long.MAX_VALUE, color, diff);
+            Long heur = alphaBeta(boardAfterMove, 1, Long.MIN_VALUE, Long.MAX_VALUE, color, diff);
 
             if(mini > heur){
                 best = m;
@@ -54,14 +54,14 @@ public class NaivePlayer extends Player {
         if( depth == 0 || time <= 50*1000000) return heuristicEvaluation(color, board);
         Long timeR = time*1000000 - System.nanoTime();
         Color enemyColor = Color.PLAYER1;
-        if(color.equals(Color.PLAYER1)) enemyColor = Color.PLAYER2;
+        if(color == Color.PLAYER1) enemyColor = Color.PLAYER2;
         List<Move> moves = makeListOfMoves(board, enemyColor);
         Move move;
         while((move = getMove(moves)) != null){
             //OGRANICZENIE CZASOWE
             Board boardAfterMove = board.clone();
             boardAfterMove.doMove(move);
-            Long eval = alphaBeta(board, depth - 1, -beta, -alpha, enemyColor, timeR);
+            Long eval = -alphaBeta(board, depth - 1, -beta, -alpha, enemyColor, timeR);
             alpha = Math.max(alpha, eval);
             if(alpha >= beta) return beta;
         }
@@ -83,27 +83,34 @@ public class NaivePlayer extends Player {
     }
 
     private Long heuristicEvaluation(Color color, Board board) {
-        // get board size
         int size = board.getSize();
-        // get start and goal for current player
+
         Field start = getStart(color, size);
         Field target = getTarget(color, size);
-        // find the best pawn for current player
+
         Field playerClosest = getClosestPawn(color, board, size, target);
-        // find the best pawn for other player
         Field enemyClosest = getClosestPawn(getOpponent(color), board, size, start);
-        // check, basing on distance who is closer to win
+
         int playerDistance = getDistance(playerClosest, target);
         int enemyDistance = getDistance(enemyClosest, start);
-        // calculate initial evaluation based on distance from goal and
-        //  all player pawns - all player endangered pawns
-        int playerEvaluation = size - playerDistance + countPawns(board, color, size) - countEndangered(board, color, size);
-        // calculation done for both sides
-        int enemyEvaluation = size - enemyDistance + countPawns(board, getOpponent(color), size) - countEndangered(board, getOpponent(color), size);
-        // check if enemy can win in one move
-        if(board.getWinner(getOpponent(color)) == getOpponent(color)) enemyEvaluation += board.getSize();
-        // final evaluation is player evaluation - enemy evaluation
-        return (long)(playerEvaluation - enemyEvaluation);
+
+        int playerDanger = countEndangered(board, color, size);
+        int enemyDanger = countEndangered(board, getOpponent(color), size);
+
+        if (playerDistance > 0) playerDistance = size * size;
+        else playerDistance = size - playerDistance;
+        if (wayIsEmpty(playerClosest, target, board, color)) playerDistance += 2 * size;
+
+        if (enemyDistance == 0) enemyDistance = size * size;
+        else enemyDistance = size - enemyDistance;
+        if (wayIsEmpty(enemyClosest, target, board, color)) enemyDistance += 2 * size;
+
+        int playerEvaluation = playerDistance  * countPawns(board, color, size) - playerDanger;
+
+        int enemyEvaluation = enemyDistance  * countPawns(board, getOpponent(color), size) - enemyDanger;
+
+        if(board.getWinner(getOpponent(color)) == getOpponent(color)) enemyEvaluation += size * size;
+        return (long)(enemyEvaluation - playerEvaluation);
     }
 
     private int countPawns(Board board, Color color, int size) {
@@ -118,25 +125,126 @@ public class NaivePlayer extends Player {
 
     private int countEndangered(Board board, Color color, int size){
         int count = 0;
-        //checking all edges - if pawn can be 'pushed off'
-        for(int i = 0; i < size; i++) {
-            if(board.getState(0,i) == color &&
-                    board.getState(1,i) == getOpponent(color)) count++;
-            if(board.getState(i,0) == color &&
-                    board.getState(i,1) == getOpponent(color)) count++;
-            if(board.getState(size - 1,i) == color &&
-                    board.getState(size - 2,i) == getOpponent(color)) count++;
-            if(board.getState(i, size - 1) == color &&
-                    board.getState(i, size - 2) == getOpponent(color)) count++;
-        }
-        //checking rest of board - if pawn can be 'squished'
-        for(int i = 1; i < size - 1; i++) {
-            for(int j = 1; j < size - 1; j++) {
-                if(board.getState(i, j) == color && (board.getState(i-1,j) == getOpponent(color) && board.getState(i+1,j) == getOpponent(color) ||
-                        board.getState(i,j-1) == getOpponent(color) && board.getState(i,j+1) == getOpponent(color))) count++;
+        for(int x = 0; x < size; x++){
+            for(int y = 0; y < size; y++){
+                if(canBePushedOff(new Field(x,y), board, color, size)) count++;
+                if(canBeSquished(new Field(x,y), board, color, size)) count++;
             }
         }
         return count;
+    }
+
+    private boolean canBePushedOff(Field currentPawn, Board board, Color color, int size){
+        if(currentPawn.getX() == 0)
+            if(anythingFromLine(currentPawn, board, color, size, 0))return true;
+        if(currentPawn.getX() == size - 1)
+            if(anythingFromLine(currentPawn, board, color, size, 1))return true;
+        if(currentPawn.getY() == 0)
+            if(anythingFromLine(currentPawn, board, color, size, 2))return true;
+        if(currentPawn.getY() == size - 1)
+            if(anythingFromLine(currentPawn, board, color, size, 3))return true;
+        return false;
+    }
+
+    private boolean canBeSquished(Field currentPawn, Board board, Color color, int size){
+        if(anythingNextto(currentPawn,board,color,size,0) && anythingFromLine(currentPawn, board, color, size, 1)) return true;
+        if(anythingNextto(currentPawn,board,color,size,1) && anythingFromLine(currentPawn, board, color, size, 0)) return true;
+        if(anythingNextto(currentPawn,board,color,size,2) && anythingFromLine(currentPawn, board, color, size, 3)) return true;
+        if(anythingNextto(currentPawn,board,color,size,3) && anythingFromLine(currentPawn, board, color, size, 2)) return true;
+        return false;
+    }
+    private boolean anythingNextto(Field currentPawn, Board board, Color color, int size, int direction){ //direction = 0 - x+; 1 - x-; 2 - y+; 3 - y-
+        if(direction < 2) {
+            int y = currentPawn.getY();
+            if (direction % 2 == 0) {
+                int x = currentPawn.getX() + 1;
+                if(x < size)
+                    if(board.getState(x,y) == getOpponent(color)) return true;
+            }
+            else {
+                int x = currentPawn.getX() - 1;
+                if(x >= 0)
+                    if(board.getState(x,y) == getOpponent(color)) return true;
+            }
+        }
+        else{
+            int x = currentPawn.getX();
+            if (direction % 2 == 0) {
+                int y = currentPawn.getY() + 1;
+                if(y < size)
+                    if(board.getState(x,y) == getOpponent(color)) return true;
+            }
+            else {
+                int y = currentPawn.getY() - 1;
+                if(y >= 0)
+                    if(board.getState(x,y) == getOpponent(color)) return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean anythingFromLine(Field currentPawn, Board board, Color color, int size, int direction){ //direction = 0 - x+; 1 - x-; 2 - y+; 3 - y-
+        if(direction < 2){
+            int y = currentPawn.getY();
+            boolean friendlyLine = true;
+            if(direction%2 == 0){
+                for(int x = currentPawn.getX() + 1; x < size; x++){
+                    Color lookupFieldColor = board.getState(x,y);
+                    if(friendlyLine){
+                        if(lookupFieldColor==Color.EMPTY) friendlyLine = false;
+                        if(lookupFieldColor==getOpponent(color)) return true;
+                    }
+                    else{
+                        if(lookupFieldColor==color) break;
+                        if(lookupFieldColor==getOpponent(color)) return true;
+                    }
+                }
+            }
+            else{
+                for(int x = currentPawn.getX() - 1; x > 0; x--){
+                    Color lookupFieldColor = board.getState(x,y);
+                    if(friendlyLine){
+                        if(lookupFieldColor==Color.EMPTY) friendlyLine = false;
+                        if(lookupFieldColor==getOpponent(color)) return true;
+                    }
+                    else{
+                        if(lookupFieldColor==color) break;
+                        if(lookupFieldColor==getOpponent(color)) return true;
+                    }
+                }
+            }
+        }
+        else{
+            boolean friendlyLine = true;
+            int x = currentPawn.getX();
+            if(direction%2 == 0){
+                for(int y = currentPawn.getY() + 1; y < size; y++){
+                    Color lookupFieldColor = board.getState(x,y);
+                    if(friendlyLine){
+                        if(lookupFieldColor==Color.EMPTY) friendlyLine = false;
+                        if(lookupFieldColor==getOpponent(color)) return true;
+                    }
+                    else{
+                        if(lookupFieldColor==color) break;
+                        if(lookupFieldColor==getOpponent(color)) return true;
+                    }
+                }
+            }
+            else{
+                for(int y = currentPawn.getY() - 1; y > 0; y--){
+                    Color lookupFieldColor = board.getState(x,y);
+                    if(friendlyLine){
+                        if(lookupFieldColor==Color.EMPTY) friendlyLine = false;
+                        if(lookupFieldColor==getOpponent(color)) return true;
+                    }
+                    else{
+                        if(lookupFieldColor==color) break;
+                        if(lookupFieldColor==getOpponent(color)) return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     private Field getClosestPawn(Color color, Board board, int size, Field target) {
@@ -144,9 +252,10 @@ public class NaivePlayer extends Player {
         for (int i=0; i<size; i++){
             for (int j=0; j<size; j++){
                 Color currentColor = board.getState(i, j);
-                if (currentColor == color) {
+                if (currentColor==color) {
                     Field currentField = new Field(i, j);
                     int distanceCurrent = getDistance(currentField, target);
+                    if (distanceCurrent == 0) return currentField;
                     if (closest == null)
                         closest = currentField;
                     else{
@@ -165,13 +274,41 @@ public class NaivePlayer extends Player {
         return distanceX + distanceY;
     }
 
+    private boolean wayIsEmpty(Field from, Field to, Board board, Color color) {
+        if(from.getX() == to.getX()){
+            if(from.getY() < to.getY()) {
+                for (int i = from.getY(); i <= to.getY(); i++)
+                    if (board.getState(from.getX(), i)==getOpponent(color))
+                        return false;
+            }
+            else {
+                for (int i = to.getY(); i <= from.getY(); i++)
+                    if (board.getState(from.getX(), i)==getOpponent(color))
+                        return false;
+            }
+        }
+        else if(from.getY() == to.getY()){
+            if(from.getX() < to.getX()) {
+                for (int i = from.getX(); i <= to.getX(); i++)
+                    if (board.getState(i, from.getY())==getOpponent(color))
+                        return false;
+            }
+            else {
+                for (int i = to.getX(); i <= from.getX(); i++)
+                    if (board.getState(i, from.getY())==getOpponent(color))
+                        return false;
+            }
+        }
+        return true;
+    }
+
     private Field getStart(Color color, int size) {
-        if (color == Color.PLAYER1) return new Field(0, 0);
+        if (color==Color.PLAYER1) return new Field(0, 0);
         return new Field(size - 1, size - 1);
     }
 
     private Field getTarget(Color color, int size) {
-        if (color == Color.PLAYER2) return new Field(0, 0);
+        if (color==Color.PLAYER2) return new Field(0, 0);
         return new Field(size - 1, size - 1);
     }
 
